@@ -173,32 +173,37 @@ public abstract class BarLineChartBaseManager<T extends BarLineChartBase, U exte
                 ReadableMap saved = extra.savedVisibleRange;
                 if (saved != null && BridgeUtils.validate(saved, ReadableType.Map, "x")) {
                     ReadableMap xRange = saved.getMap("x");
-                    if (BridgeUtils.validate(xRange, ReadableType.Number, "min")) {
+                    float rawDataXMin = chart.getData() != null ? (float) chart.getData().getXMin() : chart.getXChartMin();
+                    float rawDataXMax = chart.getData() != null ? (float) chart.getData().getXMax() : chart.getXChartMax();
+                    float effectiveXMin = Math.min(rawDataXMin, chart.getXChartMin());
+                    float effectiveXMax = Math.max(rawDataXMax, chart.getXChartMax());
+                    float totalRange = effectiveXMax - effectiveXMin;
+
+                    // max가 설정되어 있으면 fitScreen()으로 완전 줌아웃 (전체 데이터 표시)
+                    // max가 없고 min만 있으면 기존 로직대로 min 기준 줌인
+                    boolean hasMax = BridgeUtils.validate(xRange, ReadableType.Number, "max");
+                    boolean hasMin = BridgeUtils.validate(xRange, ReadableType.Number, "min");
+
+                    if (hasMax) {
+                        // max 설정 시: fitScreen으로 줌 초기화 → 전체 데이터 표시
+                        chart.fitScreen();
+                    } else if (hasMin) {
                         float visibleMin = (float) xRange.getDouble("min");
-                        if (visibleMin > 0) {
-                            float rawDataXMin = chart.getData() != null ? (float) chart.getData().getXMin() : chart.getXChartMin();
-                            float rawDataXMax = chart.getData() != null ? (float) chart.getData().getXMax() : chart.getXChartMax();
-                            float effectiveXMin = Math.min(rawDataXMin, chart.getXChartMin());
-                            float effectiveXMax = Math.max(rawDataXMax, chart.getXChartMax());
-                            float totalRange = effectiveXMax - effectiveXMin;
-                            if (totalRange > 0) {
-                                float relativeScale;
-                                if (totalRange > visibleMin) {
-                                    // zoom out so only visibleMin is shown
-                                    relativeScale = totalRange / visibleMin;
-                                } else {
-                                    // zoom in so entries spread to visibleMin width
-                                    relativeScale = visibleMin / totalRange;
-                                }
-                                float centerX = effectiveXMax;
-                                YAxis.AxisDependency axis = chart.getAxisLeft().isEnabled()
-                                        ? YAxis.AxisDependency.LEFT : YAxis.AxisDependency.RIGHT;
-                                chart.zoom(relativeScale, 1f, centerX, 0f, axis);
+                        if (visibleMin > 0 && totalRange > 0) {
+                            float relativeScale;
+                            if (totalRange > visibleMin) {
+                                relativeScale = totalRange / visibleMin;
+                            } else {
+                                relativeScale = visibleMin / totalRange;
                             }
-                            // auto zoom handled
-                            extra.autoZoomPending = false;
+                            float centerX = effectiveXMax;
+                            YAxis.AxisDependency axis = chart.getAxisLeft().isEnabled()
+                                    ? YAxis.AxisDependency.LEFT : YAxis.AxisDependency.RIGHT;
+                            chart.zoom(relativeScale, 1f, centerX, 0f, axis);
                         }
                     }
+                    // auto zoom handled
+                    extra.autoZoomPending = false;
                 }
             }
         }

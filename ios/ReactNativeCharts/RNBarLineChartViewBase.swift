@@ -154,27 +154,30 @@ class RNBarLineChartViewBase: RNYAxisChartViewBase {
             let axis = barLineChart.getAxis(.left).isEnabled ? YAxis.AxisDependency.left : YAxis.AxisDependency.right
             barLineChart.zoom(scaleX: relative, scaleY: 1.0, xValue: centerX, yValue: 0.0, axis: axis)
         } else if let saved = savedVisibleRange,
-                  let xMap = saved["x"] as? NSDictionary,
-                  let visibleMin = xMap["min"] as? CGFloat,
-                  visibleMin > 0 {
-            let rawDataXMin = barLineChart.data?.xMin ?? barLineChart.chartXMin
-            let rawDataXMax = barLineChart.data?.xMax ?? barLineChart.chartXMax
-            let effectiveXMin = min(rawDataXMin, barLineChart.chartXMin)
-            let effectiveXMax = max(rawDataXMax, barLineChart.chartXMax)
-            // print("[RNBarLineChartViewBase:updateVisibleRange] rawDataXMin: \(rawDataXMin), rawDataXMax: \(rawDataXMax), chartXMin: \(barLineChart.chartXMin), chartXMax: \(barLineChart.chartXMax), effectiveXMin: \(effectiveXMin), effectiveXMax: \(effectiveXMax)")
-            let totalRange = Double(effectiveXMax - effectiveXMin)
-            let isBarChart = (barLineChart is BarChartView) || (barLineChart is HorizontalBarChartView)
+                  let xMap = saved["x"] as? NSDictionary {
+            // max가 설정되어 있으면 fitScreen()으로 완전 줌아웃
+            // max가 없고 min만 있으면 min 기준 줌인
+            let hasMax = xMap["max"] != nil
+            if hasMax {
+                barLineChart.fitScreen()
+            } else if let visibleMin = xMap["min"] as? CGFloat, visibleMin > 0 {
+                let rawDataXMin = barLineChart.data?.xMin ?? barLineChart.chartXMin
+                let rawDataXMax = barLineChart.data?.xMax ?? barLineChart.chartXMax
+                let effectiveXMin = min(rawDataXMin, barLineChart.chartXMin)
+                let effectiveXMax = max(rawDataXMax, barLineChart.chartXMax)
+                let totalRange = Double(effectiveXMax - effectiveXMin)
 
-            if totalRange > Double(visibleMin) {
-                let relative = totalRange / Double(visibleMin)
-                let centerX: Double = effectiveXMax
-                let axis = barLineChart.getAxis(.left).isEnabled ? YAxis.AxisDependency.left : YAxis.AxisDependency.right
-                barLineChart.zoom(scaleX: relative, scaleY: 1.0, xValue: centerX, yValue: 0.0, axis: axis)
-            } else if totalRange > 0 {
-                let relative = Double(visibleMin) / totalRange
-                let centerX: Double = effectiveXMax
-                let axis = barLineChart.getAxis(.left).isEnabled ? YAxis.AxisDependency.left : YAxis.AxisDependency.right
-                barLineChart.zoom(scaleX: CGFloat(relative), scaleY: 1.0, xValue: centerX, yValue: 0.0, axis: axis)
+                if totalRange > Double(visibleMin) {
+                    let relative = totalRange / Double(visibleMin)
+                    let centerX: Double = effectiveXMax
+                    let axis = barLineChart.getAxis(.left).isEnabled ? YAxis.AxisDependency.left : YAxis.AxisDependency.right
+                    barLineChart.zoom(scaleX: relative, scaleY: 1.0, xValue: centerX, yValue: 0.0, axis: axis)
+                } else if totalRange > 0 {
+                    let relative = Double(visibleMin) / totalRange
+                    let centerX: Double = effectiveXMax
+                    let axis = barLineChart.getAxis(.left).isEnabled ? YAxis.AxisDependency.left : YAxis.AxisDependency.right
+                    barLineChart.zoom(scaleX: CGFloat(relative), scaleY: 1.0, xValue: centerX, yValue: 0.0, axis: axis)
+                }
             }
         }
 
